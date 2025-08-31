@@ -36,7 +36,9 @@ button:hover{background:var(--btn-hover)}
 }
 .cell{background:var(--tile-empty);border-radius:10px}
 .tile{position:absolute;inset:auto;display:flex;align-items:center;justify-content:center;border-radius:10px;font-weight:800;font-size:28px;color:var(--text-light);
-  width:calc((100% - 50px)/4);height:calc((100% - 50px)/4);transition:transform .12s ease-in, left .12s ease-in, top .12s ease-in, opacity .12s ease-in;}
+  width:calc((100% - 50px)/4);height:calc((100% - 50px)/4);
+  /* aumentado tiempo y easing para movimiento más agradable */
+  transition:transform .20s cubic-bezier(.22,.9,.32,1), left .12s ease-in, top .12s ease-in, opacity .16s ease-in;}
 .tile.new{animation:pop .12s ease-out}
 @keyframes pop{0%{transform:scale(.5)}100%{transform:scale(1)}}
 
@@ -69,3 +71,12 @@ label.toggle input{width:18px;height:18px}
 
 /* fade while moving */
 .board.fading .tile{opacity:0.45}
+
+/* slide-in directions (start state). --cell será establecido desde JS según tamaño real */
+.tile.slide-in-left{ transform: translateX(calc(-1 * var(--cell, 86px))) scale(1); }
+.tile.slide-in-right{ transform: translateX(calc(var(--cell, 86px))) scale(1); }
+.tile.slide-in-up{ transform: translateY(calc(-1 * var(--cell, 86px))) scale(1); }
+.tile.slide-in-down{ transform: translateY(calc(var(--cell, 86px))) scale(1); }
+
+/* make sure new-pop animation still visible */
+.tile.new{animation:pop .12s ease-out}

@@ -9,40 +9,55 @@ const toast = document.getElementById('toast');
 const hapticsEl = document.getElementById('haptics');
 
 let tiles = new Map();
+let pendingEntrance = null; // {oldGrid, dir}
 
 function place(el,r,c){
   const cellSize = (boardEl.clientWidth - 50)/4;
   const gap = 10;
+  // actualizamos la variable CSS con el desplazamiento (tamaño celda + gap)
+  boardEl.style.setProperty('--cell', `${cellSize + gap}px`);
+
   const top = 10 + r*(cellSize+gap);
   const left = 10 + c*(cellSize+gap);
   el.style.top = top+'px';
   el.style.left = left+'px';
-  el.style.transform = 'scale(1)';
+  // use translate + scale so slide classes can override translate
+  el.style.transform = 'translate(0px,0px) scale(1)';
 }
 
-function render(skipNew=false){
+function render(skipNew=false, newEntries = [], dir = ''){
   const grid = game.getGrid();
   for(let r=0;r<grid.length;r++){
     for(let c=0;c<grid[r].length;c++){
       const v = grid[r][c];
       const key = r+','+c;
       let el = tiles.get(key);
+      const isNew = newEntries.some(p => p[0]===r && p[1]===c);
       if(v){
         if(!el){
           el = document.createElement('div');
           el.className = 'tile v'+v + (skipNew?'':' new');
           el.textContent = v;
-          // start hidden for a smooth fade-in
+          // start transparent for a smooth fade-in
           el.style.opacity = '0';
           boardEl.appendChild(el);
           tiles.set(key, el);
-          // place then fade in
+          // place then apply slide-in class (if applicable)
           place(el,r,c);
-          requestAnimationFrame(()=>{ el.style.opacity = '1'; });
+          if(isNew && dir){
+            el.classList.add('slide-in-'+dir);
+            // force style/layout then remove the class to animate to neutral
+            requestAnimationFrame(()=> {
+              el.style.opacity = '1';
+              el.classList.remove('slide-in-'+dir);
+            });
+          }else{
+            // normal fade-in
+            requestAnimationFrame(()=>{ el.style.opacity = '1'; });
+          }
         }else{
           el.className = 'tile v'+v;
           el.textContent = v;
-          // ensure visible (in case board had fading)
           el.style.opacity = '1';
           place(el,r,c);
         }
@@ -64,19 +79,38 @@ function toastMsg(t){ toast.textContent=t; toast.classList.add('show'); setTimeo
 
 function doMove(dir){
   if(hapticsEl?.checked && 'vibrate' in navigator){ navigator.vibrate(8); }
-  // apply fading class so current tiles fade while the move happens
+  // save the grid before move so we can animate entries
+  pendingEntrance = { oldGrid: game.getGrid(), dir };
   boardEl.classList.add('fading');
   const res = game.move(dir);
-  // remove fading after the transition duration so new tiles can fade-in
   setTimeout(()=> boardEl.classList.remove('fading'), 160);
   if(res.moved){
-    // after move render is triggered by subscription
     if(res.won) say('¡Has llegado a 2048! Puedes seguir si quieres.');
     else if(res.lost) say('Sin movimientos 😵 — pulsa "Nueva partida"');
-  }else{
-    // nothing moved
   }
 }
+
+/* subscribimos la UI a cambios del juego */
+game.subscribe(()=>{ 
+  // compute newly occupied cells from pendingEntrance (old 0 -> new nonzero)
+  let newEntries = [];
+  let dir = '';
+  if(pendingEntrance){
+    const old = pendingEntrance.oldGrid;
+    const g = game.getGrid();
+    dir = pendingEntrance.dir;
+    for(let r=0;r<g.length;r++){
+      for(let c=0;c<g[r].length;c++){
+        if((!old || old[r][c]===0) && g[r][c]!==0){
+          newEntries.push([r,c]);
+        }
+      }
+    }
+  }
+  // render with info, then clear pending
+  render(false, newEntries, dir);
+  pendingEntrance = null;
+});
 
 /* eventos y controles */
 window.addEventListener('keydown',e=>{
@@ -115,19 +149,27 @@ document.getElementById('fs').onclick = ()=>{
   else document.exitFullscreen?.();
 };
 
+/* resize -> recalcula variable y reposiciona */
 window.addEventListener('resize',()=>{
+  // update CSS variable by recalculating in place for one dummy calculation
+  const cellSize = (boardEl.clientWidth - 50)/4;
+  const gap = 10;
+  boardEl.style.setProperty('--cell', `${cellSize + gap}px`);
+
   tiles.forEach((el,key)=>{
     const [r,c]=key.split(',').map(Number);
     place(el,r,c);
   });
 });
 
-/* subscribimos la UI a cambios del juego */
-game.subscribe(()=>{ tiles.forEach((el,key)=>{/* keep */}); render(); });
-
 /* inicio */
 window.addEventListener('load',()=>{
   game.init();
+  // ensure CSS var is set before first render
+  const cellSize = (boardEl.clientWidth - 50)/4;
+  const gap = 10;
+  boardEl.style.setProperty('--cell', `${cellSize + gap}px`);
+
   render();
   setTimeout(()=>toast.classList.add('show'),400);
   setTimeout(()=>toast.classList.remove('show'),2200);
