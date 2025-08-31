@@ -4,7 +4,7 @@
 Listo para desplegar en **GitHub Pages** 
 
 ## 🚀 Demo
-👉 [Jugar en GitHub Pages](https://TUUSUARIO.github.io/2048-vanilla/)  
+👉 [Jugar en GitHub Pages](https://Aris033.github.io/2048/)  
 *`Aris033`*
 
 ## ✨ Características
